@@ -1,0 +1,20 @@
+# docker-compose.prod.yml
+version: '3.8'
+
+services:
+  backend:
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongo:27017/fertdb
+      - PORT=5000
+    restart: always
+
+  frontend:
+    restart: always
+
+  mongo:
+    restart: always
+
+networks:
+  fert-network:
+    driver: bridge

@@ -1,0 +1,68 @@
+# docker-compose.yml - Enhanced version
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:6.0
+    container_name: fert_mongo
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    environment:
+      - MONGO_INITDB_DATABASE=fertdb
+    networks:
+      - fert-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fert_backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongo:27017/fertdb
+      - PORT=4000
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - fert-network
+    volumes:
+      - ./backend/uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/data/records"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fert_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - fert-network
+    environment:
+      - VITE_API_URL=http://localhost:5000
+
+volumes:
+  mongo_data:
+
+networks:
+  fert-network:
+    driver: bridge
